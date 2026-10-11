@@ -36,9 +36,8 @@
 
 これは **kintoneプラグインのZIPではありません**。利用するブラウザごとに導入します。ブラウザのユーザースクリプト実行許可が必要な場合は [Tampermonkey公式の案内](https://www.tampermonkey.net/faq.php?locale=ja&q=Q209) を確認してください。
 
-### 試作版・QuickTabsからの移行
+### QuickTabsを利用中の場合
 
-- 旧名「kintone フォーム設定差分チェック」を利用中の場合は、そのスクリプトを編集して新しい内容で全文を置き換えてください。名前変更により別スクリプトとして追加された場合は、旧版を無効にして二重動作を避けます。
 - 単体の「kintone Admin: Quick Tabs」は無効にしてください。同じカテゴリ内のナビゲーションを本ツールに含んでいます。
 - 今後の更新は [Releases](https://github.com/youtotto/kintone-config-lens/releases) で確認し、配布ファイルで既存スクリプトを更新してください。
 
@@ -83,7 +82,7 @@
 - 実機検証：Windows / Microsoft Edge / Tampermonkey / cybozu.comの通常スペース。
 - URL判定は `*.cybozu.com`・`*.kintone.com` とゲストスペースに対応していますが、kintone.com・ゲストスペース・他ブラウザの実機動作は未確認です。
 - スマートフォン版は対象外です。すべての設定パターンや他のカスタマイズとの併用を保証するものではありません。
-- 差分機能の実機検証は開発版v0.8.0、ヘッダー整理はv0.8.1で自動・ローカル検証を実施しました。v0.9.0は名称と配布情報を整理した初回公開版です。検証の詳細は [検証記録](docs/verification.md) を参照してください。
+- v0.9.0が初回公開版です。検証の詳細は [検証記録](docs/verification.md) を参照してください。
 
 ## 開発への参加
 
