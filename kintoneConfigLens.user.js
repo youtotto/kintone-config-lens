@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         kintone Config Lens
 // @namespace    urn:nestrec:kintone-form-diff
-// @version      0.9.0
+// @version      0.9.1
 // @author       Nest Rec / youtotto
 // @license      MIT
 // @homepageURL  https://github.com/youtotto/kintone-config-lens
 // @supportURL   https://github.com/youtotto/kintone-config-lens/issues
-// @downloadURL  https://github.com/youtotto/kintone-config-lens/releases/download/v0.9.0/kintoneConfigLens.user.js
+// @downloadURL  https://github.com/youtotto/kintone-config-lens/releases/download/v0.9.1/kintoneConfigLens.user.js
 // @description  アプリ設定16カテゴリの差分、フィールド設定の概要、フィールド数、管理画面のクイックタブを表示します。
 // @match        https://*.cybozu.com/k/admin/app/*
 // @match        https://*.cybozu.com/k/guest/*/admin/app/*
@@ -62,7 +62,7 @@
     aggregations: '集計方法', sorts: '並び順', periodicReport: '定期レポート', active: '有効', period: '間隔',
     destApp: 'コピー先アプリ', mappings: 'コピーする項目', srcType: 'コピー元の種類', srcField: 'コピー元フィールド',
     destField: 'コピー先フィールド', scope: '適用範囲', desktop: 'PC', mobile: 'モバイル', js: 'JavaScript・順序',
-    css: 'CSS・順序', url: 'URL', file: 'ファイル', fileKey: 'ファイル識別情報', contentType: 'ファイル形式',
+    css: 'CSS・順序', url: 'URL', file: 'ファイル', fileKey: 'ファイル識別情報', contentType: 'ファイル形式', contentHash: '内容（SHA-256）',
     content: 'メモ本文', includeInTemplateAndDuplicates: 'テンプレート・再利用時にメモを含める',
     layout: '配置・部品', width: '幅', height: '高さ', innerHeight: '入力欄の高さ', elementId: '要素ID'
   });
@@ -81,7 +81,7 @@
     { id: 'general', label: '一般設定・高度な設定', path: 'app/settings', shape: { name: 'string', description: 'string' } },
     { id: 'reports', label: 'グラフ・定期レポート', path: 'app/reports', shape: { reports: 'object' }, collection: 'reports', key: 'id' },
     { id: 'actions', label: 'アプリアクション', path: 'app/actions', shape: { actions: 'object' }, collection: 'actions', key: 'id', note: 'コピー先や対応項目が権限により取得できない場合、その部分は比較できません。' },
-    { id: 'customize', label: 'JavaScript・CSS', path: 'app/customize', shape: { scope: 'string', desktop: 'object', mobile: 'object' }, note: '登録情報と読み込み順の比較です。コード本文や同じURLの配信内容は比較しません。' },
+    { id: 'customize', label: 'JavaScript・CSS', path: 'app/customize', shape: { scope: 'string', desktop: 'object', mobile: 'object' }, note: '登録情報・読み込み順と、アップロードしたファイルの内容を比較します。同じURLの配信内容は比較しません。' },
     { id: 'plugins', label: 'プラグインの追加・有効状態', path: 'app/plugins', shape: { plugins: 'array' }, collection: 'plugins', key: 'id', note: 'プラグイン内部の設定・バージョンは対象外です。' },
     { id: 'notes', label: 'アプリ管理者用メモ', path: 'app/adminNotes', shape: { content: 'string', includeInTemplateAndDuplicates: 'boolean' } }
   ];
@@ -113,9 +113,44 @@
     }
     return result;
   }
-  function compareCategory(category, live, preview) {
+  function settingFiles(category, data) {
+    if (category.id === 'general') return [data.icon].filter(v => v?.type === 'FILE');
+    if (category.id !== 'customize') return [];
+    return ['desktop', 'mobile'].flatMap(device => ['js', 'css'].flatMap(kind => {
+      const entries = data[device][kind];
+      if (!Array.isArray(entries)) throw new Error('ファイル一覧の応答形式が不正です。');
+      return entries.filter(v => v?.type === 'FILE');
+    }));
+  }
+  function fileComparison(category, live, preview, hashes, warnings) {
+    // Download keys can differ without a content change. Only normalize the documented file slots.
+    const copies = [live, preview].map(data => JSON.parse(JSON.stringify(data)));
+    for (const data of copies) for (const entry of settingFiles(category, data)) {
+      const f = entry.file;
+      if (!object(f) || !['fileKey', 'name', 'contentType', 'size'].every(k => typeof f[k] === 'string') || !/^\d+$/.test(f.size)) {
+        throw new Error('ファイル情報が不足しているため比較できません。');
+      }
+    }
+    const normalizePair = (a, b) => {
+      const files = [a, b].map(entry => entry?.type === 'FILE' ? entry.file : null);
+      const verified = files.every(f => !f || hashes.has(f.fileKey));
+      for (const f of files.filter(Boolean)) {
+        if (verified) f.contentHash = hashes.get(f.fileKey);
+        else warnings.push(`ファイル「${f.name}」の内容を取得・確認できず比較できません。設定を再取得してください。`);
+        delete f.fileKey;
+      }
+    };
+    if (category.id === 'general') normalizePair(copies[0].icon, copies[1].icon);
+    if (category.id === 'customize') for (const device of ['desktop', 'mobile']) for (const kind of ['js', 'css']) {
+      const a = copies[0][device][kind], b = copies[1][device][kind];
+      for (let i = 0; i < Math.max(a.length, b.length); i++) normalizePair(a[i], b[i]);
+    }
+    return copies;
+  }
+  function compareCategory(category, live, preview, hashes = new Map()) {
     validateResponse(category, live); validateResponse(category, preview);
     const warnings = [];
+    if (['general', 'customize'].includes(category.id)) [live, preview] = fileComparison(category, live, preview, hashes, warnings);
     if (category.id === 'actions' && [live, preview].some(data => Object.values(data.actions).some(a => a.destApp == null || a.mappings == null))) {
       warnings.push('一部のコピー先・対応項目が取得できず比較できません。取得できた部分のみ表示しています。');
     }
@@ -136,7 +171,7 @@
         return rows.length ? [{ code, label: displayName(code), kind: 'changed', before: a[code], after: b[code], rows }] : [];
       });
     }
-    return { category, state: warnings.length ? 'partial' : 'ok', warnings,
+    return { category, state: warnings.length ? 'partial' : 'ok', warnings: [...new Set(warnings)],
       ...(['fields', 'layout', 'views', 'reports'].includes(category.id) ? { snapshots: [live, preview] } : {}),
       entries: result.map(entry => ({ ...entry, categoryId: category.id })), liveRevision: String(live.revision), previewRevision: String(preview.revision) };
   }
@@ -411,7 +446,7 @@
   function saveCarry(storage, ctx, results, now = Date.now(), ui = {}) {
     try {
       // Keep snapshots needed for form and collection overviews, including unchanged entries.
-      const data = { version: 2, app: ctx.app, prefix: ctx.prefix, time: now, ui, results: results.filter(r => CARRY_IDS.has(r.category.id)).map(r => ({
+      const data = { version: 3, app: ctx.app, prefix: ctx.prefix, time: now, ui, results: results.filter(r => CARRY_IDS.has(r.category.id)).map(r => ({
         id: r.category.id, state: r.state, error: r.error, warnings: r.warnings,
         liveRevision: r.liveRevision, previewRevision: r.previewRevision,
         entries: r.entries.map(e => ({ code: e.code, label: e.label, kind: e.kind, rows: e.rows })),
@@ -429,7 +464,7 @@
       if (!raw) return null;
       if (raw.length > 1500000) throw new Error('Invalid size');
       const data = JSON.parse(raw);
-      if (data.version !== 2 || (data.stale !== undefined && typeof data.stale !== 'boolean') || data.app !== ctx.app || data.prefix !== ctx.prefix ||
+      if (data.version !== 3 || (data.stale !== undefined && typeof data.stale !== 'boolean') || data.app !== ctx.app || data.prefix !== ctx.prefix ||
           !Number.isFinite(data.time) || data.time > now || now - data.time >= CARRY_TTL ||
           !Array.isArray(data.results) || data.results.length !== CARRY_IDS.size ||
           new Set(data.results.map(r => r.id)).size !== CARRY_IDS.size) throw new Error('Invalid cache');
@@ -709,6 +744,31 @@
   async function collectSettings(ctx, signal, fetcher = fetch, progress = () => {}) {
     const categories = CATEGORIES;
     const results = new Array(categories.length);
+    // Cache hashes only during this explicit collection; never persist or execute downloaded bytes.
+    const downloads = new Map(), hashes = new Map();
+    async function fingerprint(file) {
+      if (!file || typeof file.fileKey !== 'string' || !/^\d+$/.test(file.size)) return;
+      const key = file.fileKey;
+      if (!downloads.has(key)) downloads.set(key, (async () => {
+        const controller = new AbortController(), abort = () => controller.abort();
+        signal?.addEventListener('abort', abort, { once: true });
+        if (signal?.aborted) abort();
+        const timeout = setTimeout(abort, 20000);
+        try {
+          const response = await fetcher(`${ctx.prefix}/v1/file.json?fileKey=${encodeURIComponent(key)}`, {
+            method: 'GET', credentials: 'same-origin', cache: 'no-store', redirect: 'error',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }, signal: controller.signal
+          });
+          if (!response.ok) throw new Error('File download failed');
+          const bytes = await response.arrayBuffer();
+          if (bytes.byteLength !== Number(file.size)) throw new Error('Incomplete file');
+          const digest = await crypto.subtle.digest('SHA-256', bytes);
+          hashes.set(key, [...new Uint8Array(digest)].map(v => v.toString(16).padStart(2, '0')).join(''));
+        } catch { /* Missing hashes are reported as partial comparison, never unchanged. */ }
+        finally { clearTimeout(timeout); signal?.removeEventListener('abort', abort); }
+      })());
+      await downloads.get(key);
+    }
     let next = 0, completed = 0;
     async function pair(category) {
       const values = await Promise.allSettled([false, true].map(preview => getSettings(ctx, category, preview, signal, fetcher)));
@@ -719,7 +779,15 @@
     async function worker() {
       while (next < categories.length && !signal?.aborted) {
         const index = next++, category = categories[index];
-        try { results[index] = compareCategory(category, ...await pair(category)); }
+        try {
+          const values = await pair(category);
+          // Sequential downloads per worker retain the global six-request upper bound.
+          for (const data of values) for (const entry of settingFiles(category, data)) {
+            if (signal?.aborted) throw new Error('比較を中断しました。');
+            await fingerprint(entry.file);
+          }
+          results[index] = compareCategory(category, ...values, hashes);
+        }
         catch (error) { results[index] = { category, state: 'error', entries: [], warnings: [], error: error.message }; }
         progress(++completed);
       }
@@ -758,7 +826,7 @@
     return node;
   };
   const root = el('section', undefined, 'nrfd');
-  root.id = 'nrfd-root'; root.dataset.version = '0.9.0'; root.setAttribute('aria-label', 'kintone Config Lens');
+  root.id = 'nrfd-root'; root.dataset.version = '0.9.1'; root.setAttribute('aria-label', 'kintone Config Lens');
   const style = el('style');
   style.textContent = `
     .nrfd,.nrfd-dialog{font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#203149;text-align:left}

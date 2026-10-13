@@ -4,9 +4,9 @@
 
 アプリの設定画面に、設定概要のチップと反映前の差分確認を追加する無料のユーザースクリプトです。標準の編集・保存操作を使いながら、必要な情報だけを確認できます。
 
-**v0.9.0 公開ベータ版** · MIT License · Tampermonkey向け
+**v0.9.1 公開ベータ版** · MIT License · Tampermonkey向け
 
-[ダウンロード・リリースノート](https://github.com/youtotto/kintone-config-lens/releases/tag/v0.9.0) ｜ [スクリプトを開く](https://github.com/youtotto/kintone-config-lens/releases/download/v0.9.0/kintoneConfigLens.user.js) ｜ [不具合・改善提案](https://github.com/youtotto/kintone-config-lens/issues)
+[ダウンロード・リリースノート](https://github.com/youtotto/kintone-config-lens/releases/tag/v0.9.1) ｜ [スクリプトを開く](https://github.com/youtotto/kintone-config-lens/releases/download/v0.9.1/kintoneConfigLens.user.js) ｜ [不具合・改善提案](https://github.com/youtotto/kintone-config-lens/issues)
 
 ![設定画面のチップとコンパクトな操作バー](docs/images/overview.jpg)
 
@@ -30,7 +30,7 @@
 ## インストール
 
 1. ブラウザに [Tampermonkey](https://www.tampermonkey.net/) を導入します。
-2. [v0.9.0のスクリプト](https://github.com/youtotto/kintone-config-lens/releases/download/v0.9.0/kintoneConfigLens.user.js) を開き、Tampermonkeyでインストールします。
+2. [v0.9.1のスクリプト](https://github.com/youtotto/kintone-config-lens/releases/download/v0.9.1/kintoneConfigLens.user.js) を開き、Tampermonkeyでインストールします。
 3. ダウンロードだけされる場合は、ファイルをテキストで開いて全文をコピーし、Tampermonkeyの「新規スクリプトを追加」に貼り付けて保存します。
 4. kintoneの「アプリの設定」を開きます。すでに開いている場合は、編集中の内容を保存してからページを再読み込みしてください。
 
@@ -56,7 +56,7 @@
 ## API通信とデータの扱い
 
 - 初期表示では設定取得APIを呼びません。有効な一時保持があれば表示を復元します。
-- 読み込み／再取得ボタンを押したときに通常 **34回のGET**（16カテゴリ×運用中・プレビュー＋整合性確認2回）を実行します。取得失敗・中断時は回数が異なる場合があります。
+- 読み込み／再取得ボタンを押したときに設定取得の **34回のGET**（16カテゴリ×運用中・プレビュー＋整合性確認2回）と、アップロード済みJS・CSS・アイコン画像の内容取得を実行します。同じファイルキーの内容取得は1回にまとめます。取得失敗・中断時は回数が異なる場合があります。
 - ホバー、カテゴリ切替、表示オン／オフ、取得済み差分の表示では追加取得しません。チップを非表示にする操作は、実行中の手動取得を中断する操作ではありません。
 - 設定取得はログイン中のkintoneに対して行います。スクリプトによる設定書き込み、レコード取得、アプリ更新、外部サーバーへの設定情報送信は行いません。
 - 比較結果・必要な設定データ・表示状態を同じタブの `sessionStorage` に30分間保持します。バックアップではありません。期限切れや保存容量の制限により復元できない場合は再取得してください。
@@ -67,7 +67,8 @@
 全16カテゴリ：フォーム項目、フォーム配置、一覧、プロセス管理、通知3種、アクセス権3種、一般設定・高度な設定、グラフ・定期レポート、アプリアクション、JavaScript・CSS、プラグインの追加・有効状態、アプリ管理者用メモ。
 
 - APIトークン、Webhook、カテゴリー、言語ごとの名称などは比較対象外です。チップがないことは「変更なし」を保証しません。
-- JavaScript・CSSは登録情報と順序を比較します。コード本文や同じURLの配信内容は比較しません。
+- JavaScript・CSSは登録情報と順序に加え、アップロードしたファイルの内容をSHA-256で比較します。アイコン画像も内容を比較し、取得用のファイルキーだけの違いは変更に含めません。同名・同サイズでも内容が違えば検出します。同じURLの配信内容は比較しません。
+- ファイルの内容は「設定を読み込む／設定を再取得」の際に同じkintone環境から取得します。取得・照合できない場合は「一部比較不可」と表示します。ファイル本文は実行・保存・外部送信しません。
 - プラグイン内部の設定・バージョンは比較しません。
 - フィールドコードの変更は削除＋追加として表示します。通知・権限のルール配列は順序を含めて1項目として比較します。
 - 権限などで情報が取得できない場合は「取得失敗」「一部比較不可」として区別します。未反映の新規アプリなど運用中設定がない場合、比較できないことがあります。
