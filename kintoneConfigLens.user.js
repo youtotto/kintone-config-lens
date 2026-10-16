@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         kintone Config Lens
 // @namespace    urn:nestrec:kintone-form-diff
-// @version      0.9.1
+// @version      0.9.2
 // @author       Nest Rec / youtotto
 // @license      MIT
 // @homepageURL  https://github.com/youtotto/kintone-config-lens
 // @supportURL   https://github.com/youtotto/kintone-config-lens/issues
-// @downloadURL  https://github.com/youtotto/kintone-config-lens/releases/download/v0.9.1/kintoneConfigLens.user.js
+// @downloadURL  https://github.com/youtotto/kintone-config-lens/releases/download/v0.9.2/kintoneConfigLens.user.js
 // @description  アプリ設定16カテゴリの差分、フィールド設定の概要、フィールド数、管理画面のクイックタブを表示します。
 // @match        https://*.cybozu.com/k/admin/app/*
 // @match        https://*.cybozu.com/k/guest/*/admin/app/*
@@ -522,6 +522,26 @@
       document.dispatchEvent(new Event('nrfd-save-attempt'));
     }, true);
   }
+  function placeAdminWidgets(widget) {
+    const host = document.querySelector('main, [role="main"]');
+    if (!host) return;
+    // Keep kintone's breadcrumb in its native position, outside our added UI.
+    let anchor = host.querySelector('[data-testid="shared-Breadcrumb"]');
+    if (anchor) {
+      while (anchor.parentElement !== host) anchor = anchor.parentElement;
+    } else {
+      const heading = host.querySelector('h1, h2');
+      anchor = heading?.closest('header') || heading;
+    }
+    // Wait for the native page shell instead of pushing a late breadcrumb down.
+    if (!anchor) { widget.remove(); return; }
+    for (const id of ['nrfd-admin-nav', 'nrfd-page-diff']) {
+      const node = widget.id === id ? widget : document.getElementById(id);
+      if (!node) continue;
+      if (anchor.nextElementSibling !== node) anchor.after(node);
+      anchor = node;
+    }
+  }
   function mountPageDiff() {
     if (!pageDiffContext(location.href) || document.getElementById('nrfd-page-style')) return;
     const make = (tag, text, cls) => { const n = document.createElement(tag); if (text !== undefined) n.textContent = text; if (cls) n.className = cls; return n; };
@@ -579,9 +599,7 @@
             root.append(make('p', '保存後はアプリの設定に戻って再取得してください。差分はこのタブ内で30分間保持します。'));
           }
         }
-        const host = document.querySelector('main, [role="main"]');
-        const nav = document.getElementById('nrfd-admin-nav');
-        if (host && root.parentElement !== host) { if (nav?.parentElement === host) nav.after(root); else host.prepend(root); }
+        placeAdminWidgets(root);
         if (cache) expiry = setTimeout(draw, Math.max(1, cache.time + CARRY_TTL - Date.now()));
       }
       observer.observe(document.body, { childList: true, subtree: true });
@@ -697,8 +715,7 @@
       else {
         const next = JSON.stringify(current);
         if (next !== signature) { draw(current); signature = next; }
-        const host = document.querySelector('main, [role="main"]');
-        if (host && nav.parentElement !== host) host.prepend(nav);
+        placeAdminWidgets(nav);
         // Leave the standalone script in control when it is still enabled, including its hotkeys.
         nav.hidden = !!legacy();
       }
@@ -826,7 +843,7 @@
     return node;
   };
   const root = el('section', undefined, 'nrfd');
-  root.id = 'nrfd-root'; root.dataset.version = '0.9.1'; root.setAttribute('aria-label', 'kintone Config Lens');
+  root.id = 'nrfd-root'; root.dataset.version = '0.9.2'; root.setAttribute('aria-label', 'kintone Config Lens');
   const style = el('style');
   style.textContent = `
     .nrfd,.nrfd-dialog{font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#203149;text-align:left}

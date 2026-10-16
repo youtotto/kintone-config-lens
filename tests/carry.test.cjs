@@ -71,7 +71,7 @@ test('保存操作後は比較未更新を引き継ぎ、キャンセルのみ�
   const results = await collectSettings(ctx, undefined, good);
   const memory = new Map(), storage = { getItem: k => memory.get(k) || null, setItem: (k,v) => memory.set(k,v), removeItem: k => memory.delete(k) };
   saveCarry(storage, ctx, results);
-  const controls = '<main><button data-testid="shared-admin-pageActionBar-CancelButton">キャンセル</button><button data-testid="shared-admin-pageActionBar-SaveButton"><span>保存</span></button></main>';
+  const controls = '<main><h1>標準の設定画面</h1><button data-testid="shared-admin-pageActionBar-CancelButton">キャンセル</button><button data-testid="shared-admin-pageActionBar-SaveButton"><span>保存</span></button></main>';
   const inner = setup('/k/admin/app/acl/app?app=12', storage.getItem(carryKey(ctx)), controls);
   let returned;
   try {
@@ -124,7 +124,7 @@ test('フォーム保存も比較未更新にし、無効な保存ボタンや�
 });
 
 test('初回未取得の保存を結果なしでも記録し、戻り先・履歴復帰で警告を出す', async () => {
-  const inner = setup('/k/admin/app/acl/app?app=12', null, '<main><button data-testid="shared-admin-pageActionBar-CancelButton">キャンセル</button><button data-testid="shared-admin-pageActionBar-SaveButton">保存</button></main>');
+  const inner = setup('/k/admin/app/acl/app?app=12', null, '<main><h1>標準の設定画面</h1><button data-testid="shared-admin-pageActionBar-CancelButton">キャンセル</button><button data-testid="shared-admin-pageActionBar-SaveButton">保存</button></main>');
   let returned;
   try {
     inner.window.document.querySelector('[data-testid$="CancelButton"]').click();
@@ -150,7 +150,7 @@ test('期限切れ結果で保存しても警告を残し、別アプリ・空�
   const results = await collectSettings(ctx, undefined, good);
   const memory = new Map(), storage = { getItem: k => memory.get(k) || null, setItem: (k,v) => memory.set(k,v), removeItem: k => memory.delete(k) };
   saveCarry(storage, ctx, results, Date.now() - CARRY_TTL);
-  const dom = setup('/k/admin/app/acl/app?app=12', storage.getItem(carryKey(ctx)), '<main><button data-testid="shared-admin-pageActionBar-SaveButton">保存</button></main>');
+  const dom = setup('/k/admin/app/acl/app?app=12', storage.getItem(carryKey(ctx)), '<main><h1>標準の設定画面</h1><button data-testid="shared-admin-pageActionBar-SaveButton">保存</button></main>');
   try {
     dom.window.document.querySelector('button[data-testid]').click();
     assert.equal(hasSaveMarker(dom.window.sessionStorage, ctx), true);

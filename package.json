@@ -1,6 +1,6 @@
 {
   "name": "kintone-config-lens",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "private": true,
   "description": "kintoneの設定画面に概要・差分確認を追加するユーザースクリプト",
   "license": "MIT",

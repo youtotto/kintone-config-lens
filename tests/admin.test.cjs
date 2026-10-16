@@ -138,3 +138,46 @@ test('対象外ページとプラグイン個別設定ではUIもAPI通信も追
     finally { dom.window.close(); }
   }
 });
+
+
+test('標準パンくずを先頭に保ち、移動タブと差分をその下へ並べる', () => {
+  const markup = '<main><div id="breadcrumb-wrap"><nav data-testid="shared-Breadcrumb"><a href="/k/">ポータル</a> / アプリの設定</nav></div><section id="content"><h2>標準見出し</h2><input value="編集中"></section></main>';
+  for (const route of ['/k/admin/app/12/plugin/#/', '/k/admin/app/customize?app=12', '/k/admin/app/general?app=12']) {
+    const dom = setup(route, markup);
+    try {
+      const d = dom.window.document, crumb = d.querySelector('#breadcrumb-wrap');
+      const nav = d.querySelector('#nrfd-admin-nav'), diff = d.querySelector('#nrfd-page-diff');
+      assert.equal(d.querySelector('main').firstElementChild, crumb);
+      assert.equal(crumb.nextElementSibling, nav || diff);
+      if (nav) assert.equal(nav.nextElementSibling, diff);
+      assert.equal(diff.nextElementSibling.id, 'content');
+      assert.equal(d.querySelector('input').value, '編集中');
+      assert.equal(dom.requests, 0);
+    } finally { dom.window.close(); }
+  }
+});
+
+test('遅延パンくず・パンくず再描画でも順序を修復し、標準ヘッダーの前に割り込まない', async () => {
+  const dom = setup('/k/admin/app/customize?app=12', '<main></main>');
+  try {
+    const d = dom.window.document, main = d.querySelector('main');
+    assert.equal(d.querySelector('#nrfd-admin-nav'), null);
+    assert.equal(d.querySelector('#nrfd-page-diff'), null);
+    main.innerHTML = '<header><h2>標準見出し</h2></header><input value="編集中">';
+    await new Promise(resolve => setTimeout(resolve, 320));
+    assert.equal(main.firstElementChild.tagName, 'HEADER');
+    assert.equal(main.firstElementChild.nextElementSibling.id, 'nrfd-admin-nav');
+    const crumb = d.createElement('nav'); crumb.dataset.testid = 'shared-Breadcrumb'; crumb.textContent = 'ポータル / アプリの設定';
+    main.prepend(crumb); await new Promise(resolve => setTimeout(resolve, 320));
+    assert.equal(crumb.nextElementSibling.id, 'nrfd-admin-nav');
+    assert.equal(crumb.nextElementSibling.nextElementSibling.id, 'nrfd-page-diff');
+    const replacement = crumb.cloneNode(true); crumb.replaceWith(replacement);
+    main.append(d.querySelector('#nrfd-admin-nav')); await new Promise(resolve => setTimeout(resolve, 320));
+    assert.equal(replacement.nextElementSibling.id, 'nrfd-admin-nav');
+    assert.equal(replacement.nextElementSibling.nextElementSibling.id, 'nrfd-page-diff');
+    assert.equal(d.querySelectorAll('#nrfd-admin-nav').length, 1);
+    assert.equal(d.querySelectorAll('#nrfd-page-diff').length, 1);
+    assert.equal(d.querySelector('input').value, '編集中');
+    assert.equal(dom.requests, 0);
+  } finally { dom.window.close(); }
+});

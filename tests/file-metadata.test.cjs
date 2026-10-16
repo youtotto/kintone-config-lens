@@ -187,7 +187,7 @@ test('内容比較の結果をメニューと個別画面へ引き継ぎ、再�
       const cache = dom.window.sessionStorage.getItem(carryKey({ app: '12', prefix: '/k' }));
       assert.ok(cache);
       assert.doesNotMatch(cache, /fileKey|AAAA|BBBB/);
-      inner = new JSDOM('<main></main>', { url: 'https://example.cybozu.com/k/admin/app/customize?app=12', runScripts: 'outside-only' });
+      inner = new JSDOM('<main><h1>カスタマイズ</h1></main>', { url: 'https://example.cybozu.com/k/admin/app/customize?app=12', runScripts: 'outside-only' });
       inner.window.fetch = () => { throw new Error('個別画面から取得しない'); };
       inner.window.sessionStorage.setItem(carryKey({ app: '12', prefix: '/k' }), cache);
       inner.window.eval(source);

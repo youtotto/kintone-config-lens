@@ -4,9 +4,9 @@
 
 アプリの設定画面に、設定概要のチップと反映前の差分確認を追加する無料のユーザースクリプトです。標準の編集・保存操作を使いながら、必要な情報だけを確認できます。
 
-**v0.9.1 公開ベータ版** · MIT License · Tampermonkey向け
+**v0.9.2 公開ベータ版** · MIT License · Tampermonkey向け
 
-[ダウンロード・リリースノート](https://github.com/youtotto/kintone-config-lens/releases/tag/v0.9.1) ｜ [スクリプトを開く](https://github.com/youtotto/kintone-config-lens/releases/download/v0.9.1/kintoneConfigLens.user.js) ｜ [不具合・改善提案](https://github.com/youtotto/kintone-config-lens/issues)
+[ダウンロード・リリースノート](https://github.com/youtotto/kintone-config-lens/releases/tag/v0.9.2) ｜ [スクリプトを開く](https://github.com/youtotto/kintone-config-lens/releases/download/v0.9.2/kintoneConfigLens.user.js) ｜ [不具合・改善提案](https://github.com/youtotto/kintone-config-lens/issues)
 
 ![設定画面のチップとコンパクトな操作バー](docs/images/overview.jpg)
 
@@ -30,7 +30,7 @@
 ## インストール
 
 1. ブラウザに [Tampermonkey](https://www.tampermonkey.net/) を導入します。
-2. [v0.9.1のスクリプト](https://github.com/youtotto/kintone-config-lens/releases/download/v0.9.1/kintoneConfigLens.user.js) を開き、Tampermonkeyでインストールします。
+2. [v0.9.2のスクリプト](https://github.com/youtotto/kintone-config-lens/releases/download/v0.9.2/kintoneConfigLens.user.js) を開き、Tampermonkeyでインストールします。
 3. ダウンロードだけされる場合は、ファイルをテキストで開いて全文をコピーし、Tampermonkeyの「新規スクリプトを追加」に貼り付けて保存します。
 4. kintoneの「アプリの設定」を開きます。すでに開いている場合は、編集中の内容を保存してからページを再読み込みしてください。
 
